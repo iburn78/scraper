@@ -14,7 +14,7 @@ class User(BaseModel):
 # - coerce types when possible
 # - raise ValidationError if invalid
 
-u = User(name="Andy", age="35")
+u = User(name="Andy", age=35)
 
 print(u)                  # parsed model object
 print(type(u.age))       # <class 'int'>
