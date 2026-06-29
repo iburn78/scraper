@@ -6,10 +6,8 @@ from crawl4ai.content_filter_strategy import PruningContentFilter
 from crawl4ai.markdown_generation_strategy import DefaultMarkdownGenerator
 from ggl_news_feed import get_google_news_feed
 
-###_ Categorization required for mds... 
-###_ may need vector concepts
 def _set_filename(keywords=None):
-    exctime = datetime.now().strftime('%Y-%m-%d_%H%M%S_%f_')[:-2] 
+    exctime = datetime.now().strftime('%Y-%m-%d_%H%M%S_%f_')[:-3] 
     if keywords:
         safe_keywords = re.sub(r'[\\/*?:"<>|]', "_", keywords)
         filename = f"{exctime}_{'_'.join(safe_keywords.split()[:3])}.md"
@@ -39,7 +37,7 @@ async def _crawl_url_and_save(crawler, url, title=None, published=None):
     filename = _set_filename(title_)
 
     if published: 
-        pdate = published.strftime("%Y-%m-%D") 
+        pdate = published.strftime("%Y-%m-%d") 
     else: 
         pdate = "-----"
 
@@ -79,4 +77,9 @@ def crawl_news(
     asyncio.run(_crawl_news(query, kr=kr, cutoff_months=cutoff_months, max_result=max_result, show_res=show_res))
 
 if __name__ == "__main__":
-    crawl_news('삼성전자 하이닉스 전망')
+    # crawl_news('SOOP 실적')
+    # crawl_news('롯데에너지머티리얼즈 실적')
+    crawl_news('아이지넷 실적')
+
+###_ Categorization required for mds... 
+###_ study sequence of what to get first, and then next... 

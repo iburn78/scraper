@@ -5,6 +5,7 @@ import asyncio
 import re
 import feedparser
 from playwright.async_api import async_playwright 
+from rapidfuzz import fuzz
 
 # sites that detect crawling
 BANNED_DOMAINS = {
@@ -13,6 +14,9 @@ BANNED_DOMAINS = {
     "daum.net",
     "naver.com",
 }
+
+DEDUPLICATE_THRESHOLD = 92 # close enough
+MIN_DATES_TO_PASS = 3 # mimimum date difference not to compare titles
 
 async def get_google_news_feed(
     query,
@@ -76,6 +80,11 @@ async def get_google_news_feed(
         reverse=True
     )
 
+    # filter titles that are obviously so close
+    entries = _deduplicate_titles(
+        entries,
+    )
+
     items = []
 
     batch_size = int(max_result*1.5)
@@ -134,10 +143,10 @@ async def _resolve_google_news_url(link):
             try:
                 await page.wait_for_url(
                     lambda u: "news.google.com" not in u,
-                    timeout=5000,
+                    timeout=10000,
                 )
             except:
-                pass
+                return None
 
             if not _is_banned(page.url):
                 return page.url
@@ -152,3 +161,69 @@ def _is_banned(url: str) -> bool:
         return any(b in domain for b in BANNED_DOMAINS)
     except:
         return True
+
+def _deduplicate_titles(
+    entries,
+    threshold=DEDUPLICATE_THRESHOLD, # close enough
+    min_dates_to_pass=MIN_DATES_TO_PASS, # mimimum date difference not to compare titles
+):
+    kept = []
+    for e in entries:
+        duplicate = False
+        nt = _normalize_title(e["title"])
+
+        for k in kept:
+
+            days = abs(
+                (e["published"] - k["published"]).days
+            )
+
+            if days >= min_dates_to_pass:
+                continue
+
+            score = fuzz.token_set_ratio(
+                nt,
+                _normalize_title(k["title"])
+            )
+
+            if score >= threshold:
+                duplicate = True
+                break
+
+        if not duplicate:
+            kept.append(e)
+
+    return kept
+
+def _normalize_title(title):
+    title = title.lower()
+
+    # remove [xxx]
+    title = re.sub(
+        r"\[[^\]]+\]",
+        "",
+        title
+    )
+
+    # remove (xxx)
+    title = re.sub(
+        r"\([^)]*\)",
+        "",
+        title
+    )
+
+    # normalize punctuation → space
+    title = re.sub(
+        r"[.,:;!?\"'`·•\-_/]+",
+        " ",
+        title
+    )
+
+    title = re.sub(
+        r"\s+",
+        " ",
+        title
+    )
+
+    return title.strip()
+
