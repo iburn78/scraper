@@ -26,7 +26,7 @@ print(u.model_dump_json())  # JSON string
 
 #%% -----------------------------------------------------------------------
 # AI type validation use cases
-from pydantic_example import BaseModel
+from pydantic import BaseModel
 from pydantic_ai import Agent
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
@@ -48,18 +48,18 @@ model = OpenAIChatModel(
 # structured output schema
 from typing import Literal
 from typing import Annotated
-from pydantic_example import StringConstraints
+from pydantic import StringConstraints
+
+# uppercases, letters, 1 to 5 chars, exactly one token(word)
+# pattern=r'^[A-Z]{1,5}$' 
+# include dots/dashes  
+# pattern=r'^[A-Z.\-]{1,10}$'
+# include / 
+# pattern=r'^[A-Z0-9.\-\/]{1,15}$'
 
 TickerStr = Annotated[
     str,
-    StringConstraints(
-        # uppercases, letters, 1 to 5 chars, exactly one token(word)
-        pattern=r'^[A-Z]{1,5}$'
-        # include dots/dashes  
-        # pattern=r'^[A-Z.\-]{1,10}$'
-        # include / 
-        # pattern=r'^[A-Z0-9.\-\/]{1,15}$'
-    )
+    StringConstraints(pattern=r'^[A-Z]{1,5}$')
 ]
 
 class StockAnalysis(BaseModel):
@@ -75,8 +75,8 @@ agent = Agent(
 
 request_text = 'Analyze NVDA stock sentiment.'
 
-result = await agent.run(request_text) # when run in notebook:
-# result = agent.run_sync(request_text) # run in terminal
+# result = await agent.run(request_text) # when run in notebook:
+result = agent.run_sync(request_text) # run in terminal
 
 # type validated output
 print(result.output)
@@ -84,167 +84,3 @@ print(result.output)
 print(result.output.ticker)
 print(result.output.sentiment)
 print(result.output.confidence)
-
-
-#%% -----------------------------------------------------------------------
-# Internet search version
-from pydantic_ai import Agent, RunContext
-from pydantic_ai.models.openai import OpenAIChatModel
-from pydantic_ai.providers.openai import OpenAIProvider
-from openai import AsyncOpenAI
-from ddgs import DDGS
-
-client = AsyncOpenAI(
-    base_url='http://localhost:11434/v1',
-    api_key='ollama',
-)
-
-model = OpenAIChatModel(
-    model_name='gemma4',
-    provider=OpenAIProvider(openai_client=client),
-)
-
-agent = Agent(model)
-
-@agent.tool
-def web_search(ctx: RunContext, query: str) -> str:
-    # should be implemented
-    # e.g., listing of search (using DuckDuckGo)
-    # - titles
-    # - snippets
-    # - URLs
-
-    print('--------------')
-    print(query) # AI generated query
-    print('--------------')
-
-    with DDGS() as ddgs:
-        results = list(ddgs.news(query))# , max_results=100))
-# ddgs.text vs ddgs.news
-    # extract useful text fields
-    formatted = [
-        f"{r.get('title', '')} - {r.get('body', '')} ({r.get('href', '')})"
-        for r in results
-    ]
-    search_res = ' '.join(formatted)
-
-    for r in results:
-        print(r)
-
-    # print('--------------')
-    # print(search_res) # ddgs search result
-    # print('--------------')
-    return f"search results:\n{search_res}"
-
-request_text = "Search web for NVIDIA news 1"
-
-keys = [
-"Nvidia latest earnings report date",
-"Nvidia Blackwell chip announcement",
-"Nvidia Microsoft partnership data center",
-"Nvidia data center AI deployments news",
-"Nvidia export controls update",
-"Nvidia Omniverse enterprise launch"
-]
-for k in keys:
-    res = web_search(None, k)
-    print(res)
-
-# result = await agent.run(request_text) # when run in notebook:
-# result = agent.run_sync(request_text) # run in terminal
-
-# print(result.output)
-
-#############################################
-# study Crawl4AI (for internet crawl) // should require another venv
-#############################################
-#%% 
-from ddgs import DDGS
-
-with DDGS() as ddgs:
-    results = list(
-        ddgs.text(
-            "python pandas feather vs sqlite",
-        )
-    )
-
-# with DDGS() as ddgs:
-#     results = list(
-#         ddgs.news(
-#             "space x ipo and perspective"
-#         )
-#     )
-with DDGS() as ddgs:
-    results = list(
-        ddgs.images(
-            "apple cakes",
-        )
-    )
-
-for r in results:
-    print(r["title"])
-    # print(r["href"]) # text 
-    # print(r["url"]) # news
-    print(r.get('url') or r.get('href'))
-
-
-
-
-
-# Chrome for Testing 148.0.7778.96 (playwright chromium v1223) downloaded to /Users/andy/Library/Caches/ms-playwright/chromium-1223
-
-
-#%% 
-import asyncio
-from crawl4ai import AsyncWebCrawler
-
-async def main():
-    async with AsyncWebCrawler() as crawler:
-        result = await crawler.arun(
-            url="https://pandas.pydata.org"
-        )
-
-        print(result.markdown)
-
-asyncio.run(main())
-
-
-summary = llm(result.markdown)
-
-
-# from ddgs import DDGS
-# from crawl4ai import AsyncWebCrawler
-# import asyncio
-
-
-# async def crawl(url):
-#     async with AsyncWebCrawler() as c:
-#         return await c.arun(url)
-
-
-# with DDGS() as ddgs:
-#     urls = [
-#         r["href"]
-#         for r in ddgs.text(
-#             "Samsung electronics latest AI strategy",
-#             max_results=3
-#         )
-#     ]
-
-
-# async def main():
-#     for u in urls:
-#         result = await crawl(u)
-#         print(result.markdown[:1000])
-
-
-# asyncio.run(main())
-
-
-# User question
-# ↓
-# DDGS → find pages
-# ↓
-# Crawl4AI → fetch content
-# ↓
-# LLM → answer
