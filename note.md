@@ -3,7 +3,9 @@
 
 <br><br>
 
-# ollama show gemma4
+# ollama 
+
+> show gemma4
 
 ### Model core
 architecture (gemma4)
@@ -54,3 +56,113 @@ Model = (weights + architecture)
 - read weights from memory
 - compute next token
 - repeat (slow, sequential)
+
+<br>
+
+### Basic usage
+
+    from openai import OpenAI
+
+    client = OpenAI(
+        base_url="http://localhost:11434/v1", # ollama
+        api_key= "-", 
+    )
+
+    def get_LLM_response(prompt):
+        chat_completion = client.chat.completions.create(
+            model="gemma4", 
+            messages=[
+                {
+                    "role": "user",
+                    "content": (
+                        prompt
+                    )
+                }
+            ],
+        )
+    
+        response = chat_completion.choices[0].message.content
+        return response
+
+
+<br><br>
+
+# Pydantic - typechecking
+
+Pydantic will:
+- validate input types
+- coerce types when possible
+- raise ValidationError if invalid
+
+Example usage:
+    from pydantic import BaseModel, computed_field
+
+    class Rectangle(BaseModel):
+        width: int
+        height: int
+
+        @computed_field         # lets included in dump
+        @property               # lets accessible as property
+        def area(self) -> int:  # return type required
+            return self.width * self.height
+
+    r = Rectangle(width=3, height=4)
+
+    print(r.area)
+    print(r.model_dump())
+    print(r.model_dump_json())
+    # {'width': 3, 'height': 4, 'area': 12}
+
+Connecting with Local LLM model
+
+    from typing import Literal
+    from typing import Annotated
+    from pydantic import BaseModel, StringConstraints
+    from pydantic_ai import Agent
+    from pydantic_ai.models.openai import OpenAIChatModel
+    from pydantic_ai.providers.openai import OpenAIProvider
+    from openai import AsyncOpenAI
+
+    TickerStr = Annotated[
+        str,
+        StringConstraints(pattern=r'^[A-Z]{1,5}$')
+    ]
+
+    class StockAnalysis(BaseModel):
+        ticker: TickerStr
+        sentiment: Literal['bullish', 'bearish', 'neutral'] # or 'str' 
+        confidence: float
+
+    client = AsyncOpenAI(
+        base_url='http://localhost:11434/v1',
+        api_key='-'
+    )
+
+    model = OpenAIChatModel(
+        model_name='gemma4',
+        provider=OpenAIProvider(openai_client=client),
+    )
+
+    agent = Agent(
+        model=model,
+        output_type=StockAnalysis,
+    )
+
+    request_text = 'Analyze NVDA stock sentiment.'
+
+    # result = await agent.run(request_text) # when run in notebook:
+    result = agent.run_sync(request_text) # run in terminal
+    print(result.output)
+
+# Sentence Transformers
+
+Converts sentences to vectors
+
+    from sentence_transformers import SentenceTransformer
+    from sentence_transformers.util import cos_sim
+
+    # LLM model downloaded in ~/.cache/huggingface/
+    model = SentenceTransformer("all-MiniLM-L6-v2", local_files_only=True)
+    titles = []
+    vecs = model.encode(titles)
+    score = cos_sim(vecs[0], vecs[1]).item()

@@ -4,13 +4,14 @@ import pandas as pd
 
 pd_ = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) # .   
 df_krx = pd.read_feather(os.path.join(pd_, "trader/data_collect/data/df_krx.feather"))
-LLM_CLIENT = OpenAI(
+
+client = OpenAI(
     base_url="http://localhost:11434/v1", # ollama
     api_key= "-", 
 )
 
 def get_LLM_response(prompt):
-    chat_completion = LLM_CLIENT.chat.completions.create(
+    chat_completion = client.chat.completions.create(
         model="gemma4", 
         messages=[
             {
