@@ -1,12 +1,12 @@
-## Distinctive points
-- should focus on competitors 
-- also, on value chain
+## Key Differentiators
+- should also focus on competitors 
+- identify value chains for companies
 
 <br><br>
-## Envs
-- Chrome for Testing 148.0.7778.96 (playwright chromium v1223) downloaded to /Users/andy/Library/Caches/ms-playwright/chromium-1223
-- Scrapping from fnguide is easier
 
+## Envs
+- Chrome downloaded to /Users/andy/Library/Caches/ms-playwright/chromium-1223
+- Scrapping from fnguide is easier
 
 <br><br>
 
