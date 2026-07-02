@@ -1,0 +1,91 @@
+import os
+import pandas as pd
+from openai import OpenAI
+import requests
+from bs4 import BeautifulSoup
+
+pd_ = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) # .   
+df_krx = pd.read_feather(os.path.join(pd_, "trader/data_collect/data/df_krx.feather"))
+
+client = OpenAI(
+    base_url="http://localhost:11434/v1", # ollama
+    api_key= "-", 
+)
+
+def get_LLM_response(prompt):
+    chat_completion = client.chat.completions.create(
+        model="gemma4", 
+        messages=[
+            {
+                "role": "user",
+                "content": (
+                    prompt
+                )
+            }
+        ],
+    )
+    
+    response = chat_completion.choices[0].message.content
+    return response
+
+def get_name(code): 
+    return df_krx.loc[code,'Name']
+
+def get_business_summary(code: str): 
+
+    url = (
+        "https://wcomp.fnguide.com/CompanyInfo/Snapshot"
+        f"?c_id=AA&menu_type=01&cmp_cd={code}"
+    )
+
+    headers = {
+        "User-Agent": "Mozilla/5.0"
+    }
+
+    r = requests.get(
+        url,
+        headers=headers,
+        timeout=10,
+    )
+
+    r.raise_for_status()
+
+    soup = BeautifulSoup(
+        r.text,
+        "html.parser",
+    )
+
+    title = soup.select_one(
+        "#bizSummaryHeader"
+    )
+
+    date = soup.select_one(
+        "#bizSummaryDate"
+    )
+
+    content = soup.select_one(
+        "#bizSummaryContent"
+    )
+
+    summary = None
+
+    if content:
+        summary = "\n\n".join(
+            li.get_text(
+                " ",
+                strip=True,
+            )
+            for li in content.select("li")
+        )
+
+    return {
+        'title':(
+            title.get_text(strip=True)
+            if title else None
+        ),
+        'date':(
+            date.get_text(strip=True).strip("[]").replace("/","-")
+            if date else None
+        ),
+        'summary':summary,
+    }
